@@ -1,0 +1,15 @@
+split_percentage: 0.2
+split_data: true
+process_data: true
+save_datapipelined: true
+transform_data: true
+save_transformed: true
+data_pipelined_path: artifacts/data_pipeline/data_pipelined_path.pkl
+save_transformed_path: null
+data_file_path: artifacts/data/raw/data.csv #artifacts/data/processed/train.csv
+left_split_save_path: train_split.csv
+right_split_save_path: test_split.csv
+save_split: false
+ignore_target_pipeline: false
+normalise_features: false
+

@@ -1,0 +1,17 @@
+split_data: true
+test_size: 0.1
+val_size: 0.1
+process_data: true
+save_datapipelined: true
+transform_data: true
+save_transformed: true
+save_data_pipeline: true
+data_pipelined_path: artifacts/data_pipeline/data_pipelined.pkl
+save_transformed_path: null
+data_file_path: artifacts/data/raw/data.csv
+train_save_path: artifacts/data/processed/train_split.csv
+test_save_path: artifacts/data/processed/test_split.csv
+val_save_path: artifacts/data/processed/val_split.csv
+save_split_data: true
+ignore_target_pipeline: false
+normalise_transformed_feature: true
