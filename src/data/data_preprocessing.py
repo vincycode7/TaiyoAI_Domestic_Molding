@@ -4,50 +4,138 @@ from sklearn.pipeline import Pipeline
 import joblib
 import argparse
 
-class OneHotEncoderColumns(BaseEstimator, TransformerMixin):
+class Fill_Empty_Spaces_With_Values(BaseEstimator, TransformerMixin):
     """
-    A class used to preprocess the data by one-hot encoding specified features.
-
-    Parameters:
-        all_feat (list, optional): List of all features to be considered.
-            Default: None
-        feat_to_dummy (list, optional): List of features to be one-hot encoded.
-            Default: None
-
-    Attributes:
-        feat_to_dummy (list): List of features to be one-hot encoded.
-        all_feat (list): List of all features to be considered.
-        one_hot_encoder (OneHotEncoder): The instance of OneHotEncoder used to fit and transform the data.
+        This is a Class Used to Preprocess the data, By
+        Filling Missing Values with Standard Values That
+        Represents Missing Values, e.g numpy.nan.
     """
+    def __init__(self, all_features=[],                          
+                        imputer=None
+                        ):
 
-    def __init__(self, all_feat=None,
-                 feat_to_dummy=None):
-        self.feat_to_dummy = feat_to_dummy
-        self.all_feat = all_feat
+        #Read in data
+        self.features = all_features
+        self.imputer = IterativeImputer(max_iter=20, random_state=0) if not imputer else imputer
 
-    def fit(self, X, y=None):
+    def fit(self,X):
+        try:
+            X = X[self.features]
+        except Exception as exp:
+            raise exp
+        
+        self.imputer.fit(X)
+        return self
+        
+    def transform(self,X):
         """
-        Fit the OneHotEncoder to the data.
+            Work on the dataset
         """
+        
+        try:
+            X = X[self.features]
+        except Exception as exp:
+            raise exp
+            
+        #Replace Missing Value With Recognized Missing Value
+        return pd.DataFrame(self.imputer.transform(X), columns=self.features)
+        
+class Fill_Empty_Spaces_With_NaN(BaseEstimator, TransformerMixin):
+    """
+        This is a Class Used to Preprocess the data, By
+        Filling Missing Values with Standard Values That
+        Represents Missing Values, e.g numpy.nan.
+    """
+    
+    def __init__(self, all_features=[],
+                        find_in=[],
+                                        
+                        find=None,
+                        with_=None
+                        ):
+    
+        #Read in data
+        self.features = all_features
+        self.find_in = find_in
+        self.find = ['?','? ',' ?',' ? ','',' ','-',None,'None','none','Null','null',np.nan] if not find else find
+        self.with_ = np.nan if not with_ else with_
+
+    def fit(self,X):
+        return self #do nothing
+    def transform(self,X):
+        """
+            Work on the dataset
+        """
+        
+        try:
+            X = X[self.features]
+        except Exception as exp:
+            raise exp
+            
+        #Replace Missing Value With Recognized Missing Value
+        X[self.find_in] = X[self.find_in].replace(self.find,self.with_)
+        return X
+    
+class Back_To_Float(BaseEstimator, TransformerMixin):
+    """
+        This is a Class Used to Preprocess the data, By
+        encoding N features and filling missing values
+        too
+    """
+    
+    def __init__(self, all_features=[],  
+                        to_encode=[]):
+    
+        #Read in data
+        self.features = all_features
+        self.to_encode = to_encode
+
+    def fit(self,X):
+        #check if features are present
         return self #do nothing
 
-    def transform(self, X):
+    def transform(self,X):
         """
-        One-hot encode the specified features.
-
-        Parameters:
-            X (pandas.DataFrame): The input data.
-
-        Returns:
-            pandas.DataFrame: The one-hot encoded data.
+            Work on the dataset
         """
+        #check if features are present
+        try:
+            X = X[self.features].astype('float')
+        except Exception as exp:
+            raise exp
+        return X
+    
+class OneHotEncode_Columns(BaseEstimator, TransformerMixin):
+    """
+        This is a Class Used to Preprocess the data by
+        one hot encoding of specified features.
+    """
+    
+    def __init__(self, all_feat=["make_id", "model_id", "series_id", "is_verified_dealer", "year_of_manufacture", "listingtitle", "conditiontitle", "sailthru_tag"],
+                 feat_to_dummy=["make_id","model_id","series_id","is_verified_dealer","year_of_manufacture","listingtitle", "conditiontitle", "sailthru_tag"]):
+    
+        #Read in data
+        self.feat_to_dummy = feat_to_dummy
+        self.all_feat = all_feat
+    def fit(self,X):
         try:
             X = X[self.all_feat]
-        except KeyError as exp:
-            raise KeyError("Error: One or more columns specified in all_feat not found in input data") from exp
-
+        except Exception as exp:
+            raise exp
+        self.one_hot_encoder = OneHotEncoder().fit(X)
+        return self #do nothing
+    
+    def transform(self,X):
+        """
+            One Hot Encode Some Features 
+        """
+        
+        try:
+            X = X[self.all_feat]
+        except Exception as exp:
+            raise exp
         X = self.one_hot_encoder.transform(X)
-        X = pd.DataFrame(X.toarray(), columns=self.one_hot_encoder.get_feature_names(self.feat_to_dummy))
+        X = pd.DataFrame(X.toarray(),columns=self.one_hot_encoder.get_feature_names(self.feat_to_dummy))
         return X
     
 class BaseDataProcessor:
@@ -61,7 +149,7 @@ class BaseDataProcessor:
         all_columns (List[str]): The list of all columns in the data.
         target_feature (str): The target feature for which the model is being built.
         exclude_feature_from_export (List[str]): The list of features that should not be exported.
-        pipeline_config (Union[None, sklearn.pipeline.Pipeline]): The pipeline configuration.
+        pipeline_config_feature (Union[None, sklearn.pipeline.Pipeline]): The pipeline configuration.
     """
 
     def __init__(self, file_path, all_columns=["Date", "Spot/Export Blow Molding", "Spot, Domestic", 
@@ -144,6 +232,7 @@ class BaseDataProcessor:
         """
         data = data.drop(columns=self.exclude_feature_from_export)
         data.to_csv(file_path, index=False)
+        
 class DataPreProcessor(BaseDataProcessor):
     def __init__(self, file_path, all_columns=["Date", "Spot/Export Blow Molding", "Spot, Domestic", 
                                             "WTISPLC", "MCOILBRENTEU", "GASREGM", "IMPCH", "EXPCH", 
@@ -159,17 +248,27 @@ class DataPreProcessor(BaseDataProcessor):
                                             "France_import", "Germeny_import", "United Kingdome_import", 
                                             "China_import", "Japan_import", "South_korea_import"], 
                  target_feature="Domestic Market (Contract) Blow Molding, Low",
-                 exclude_feature_from_export=["Date"], pipeline_config=None):
+                 exclude_feature_from_export=["Date"], pipeline_config_feature=None,  pipeline_config_target=None):
         super().__init__(file_path, all_columns, target_feature, exclude_feature_from_export)
-        assert isinstance(pipeline_config, Pipeline) or pipeline_config is None, "pipeline_config should be a Pipeline object or None"
-        
-        self.pipeline_config = Pipeline([
+        assert isinstance(pipeline_config_feature, Pipeline) or pipeline_config_feature is None, "pipeline_config_feature should be a Pipeline object or None"
+        assert isinstance(pipeline_config_target, Pipeline) or pipeline_config_target is None, "pipeline_config_target should be a Pipeline object or None"
+
+        #Initialize Pipeline for features
+        self.pipeline_config_feature = Pipeline([
                         ('fill_missing_with_NaN', Fill_Empty_Spaces_With_NaN(all_features=self.get_features(),find_in=self.get_missing_int_features()+self.find_missing_str,with_='NaN')),
                         ('int_column_to_float', Back_To_Float(all_features=self.get_features(), to_encode=self.get_missing_int_features())),
                         ('fill_missing_for_nan', Fill_Empty_Spaces_With_NaN(all_features=self.get_features(),find_in=self.get_missing_int_features()+self.find_missing_str,with_=np.nan)),
                         ('Mice_Imputer', Fill_Empty_Spaces_With_Values(all_features=self.get_features())),
-                        ('Round_of_Values', Round_Of_Values(all_feat=self.get_features(),feat_to_round=self.feature_to_dummy))
-                        ]) if pipeline_config is None else pipeline_config
+                        ]) if pipeline_config_feature is None else pipeline_config_feature
+        
+        #Initialize Pipeline fore target
+        self.pipeline_config_target = Pipeline([
+                        ('shift_target', Shift_Target(all_feat=self.get_features(), feat_to_dummy=self.feature_to_dummy))
+                        ('label_shift_target', Label_Shift_Target(all_feat=self.get_features(), feat_to_dummy=self.feature_to_dummy))
+                        ('fill_missing_target', Fill_Empty_Spaces_With_NaN(all_features=self.get_target(),find_in=self.get_target(),with_=np.nan)),
+                        ('Mice_Imputer_target', Fill_Empty_Spaces_With_Values(all_features=self.get_target())),
+                        ('One_Hot_Encode_Shift_Target_Label', OneHotEncode_Columns(all_feat=self.get_features(), feat_to_dummy=self.feature_to_dummy))
+                        ]) 
         
     def split_data(self, **kwargs):
         """
@@ -231,14 +330,28 @@ class DataPreProcessor(BaseDataProcessor):
         data = kwargs.get("data", None)
         
         if data is not None and isinstance(data, (pd.DataFrame, np.ndarray)):
-            self.pipeline_config.fit(data)
+            pass
         else:
-            self.pipeline_config.fit(self.data)
+            data = self.data
+        self.transformed_X_data = self.pipeline_config_feature.fit_transform(data)
+        self.transformed_Y_data = self.pipeline_config_target.fit_transform(self.transformed_X_data)
 
         if save_data_pipeline:
-            self.save_pipeline(self.pipeline_config, pipeline_path)
-
-    def save_pipeline(self, pipeline, pipeline_path=None):
+            self.save_pipeline(self.pipeline_config_feature,self.pipeline_config_target, pipeline_path)
+            
+    def transform_pipeline(self, **kwargs):
+        data = kwargs.get("data", None)
+        ignore_target_pipeline = kwargs.get("ignore_target_pipeline", True)
+        
+        if data is not None and isinstance(data, (pd.DataFrame, np.ndarray)):
+            pass
+        else:
+            data = self.data
+        self.transformed_X_data = self.pipeline_config_feature.transform(data)
+        if not ignore_target_pipeline:
+            self.transformed_Y_data = self.pipeline_config_target.transform(self.transformed_X_data)
+        
+    def save_pipeline(self, pipeline_config_feature,pipeline_config_target, pipeline_path=None):
         """
         Save the pipeline to disk.
 
@@ -248,22 +361,27 @@ class DataPreProcessor(BaseDataProcessor):
 
         """
         assert isinstance(pipeline_path, str), "pipeline_path should be a string"
-        assert isinstance(pipeline, Pipeline) or pipeline is None, "pipeline should be a Pipeline object or None"
-        assert pipeline.steps, "pipeline should be fitted before saving"
-        
-        if hasattr(pipeline, 'steps'):
-            for step in pipeline.steps:
-                if hasattr(step[1], 'coef_'):
-                    print(f"Pipeline step {step[0]} has been fit on data.")
-                else:
-                    print(f"Pipeline step {step[0]} has not been fit on data.")
-        else:
-            raise ValueError("This is not a scikit-learn pipeline or not a fitted scikit-learn pipeline.")
-        
+        assert isinstance(pipeline_config_feature, Pipeline), "pipeline_config_feature should be a Pipeline object or None"
+        assert isinstance(pipeline_config_target, Pipeline), "pipeline_config_target should be a Pipeline object or None"
+        assert pipeline_config_feature.steps, "pipeline_config_feature should be fitted before saving"
+        assert pipeline_config_target.steps, "pipeline_config_target should be fitted before saving"
+
+        for each_pipeline_config in [pipeline_config_feature, pipeline_config_target]
+            if hasattr(each_pipeline_config, 'steps'):
+                for step in each_pipeline_config.steps:
+                    if hasattr(step[1], 'coef_'):
+                        print(f"Pipeline step {step[0]} has been fit on data.")
+                    else:
+                        print(f"Pipeline step {step[0]} has not been fit on data.")
+            else:
+                raise ValueError("This is not a scikit-learn pipeline or not a fitted scikit-learn pipeline.")
+            
         pipeline_path = pipeline_path if pipeline_path is None else "artifacts/data_pipeline/pipeline_path.pkl"
         if ".pkl" not in pipeline_path:
             pipeline_path = pipeline_path + ".pkl"
-        joblib.dump(pipeline, pipeline_path)
+        joblib.dump({"pipeline_config_feature":pipeline_config_feature, 
+                     "pipeline_config_target":pipeline_config_target}, 
+                    pipeline_path)
 
 
     def load_pipeline(self, load_path):
@@ -275,11 +393,13 @@ class DataPreProcessor(BaseDataProcessor):
 
         """
         try:
-            self.pipeline_config = joblib.load(load_path)
+            pipeline_config = joblib.load(load_path)
+            self.pipeline_config_feature = pipeline_config["pipeline_config_feature"]
+            self.pipeline_config_target = pipeline_config["pipeline_config_target"]
         except Exception as e:
             raise Exception(f'Could not load pipeline, because of error: {e}')
     
-    def process_data(self, data=None, **kwargs):
+    def pre_process_data(self, data=None, **kwargs):
         """
             This method processes the data, splitting it into train, validation, and test sets if specified.
             Parameters:
@@ -325,12 +445,18 @@ class DataPostProcessor(DataPreProcessor):
     
     def __init__(self, file_path,  pipeline_path):
         super().__init__(file_path)
+        
+        self.load_data(file_path)
+        self.load_pipeline(pipeline_path)
     
-    def process_data(self, data=None, **kwargs):
+    def post_process_data(self, data=None, **kwargs):
+        
         if isinstance(data, type(None)):
             data = self.data
         if not isinstance(data, pd.DataFrame):
             raise TypeError("Input data is not of type pandas.DataFrame")
+        
+        self.transform_pipeline(data)
         
 # TODO: write classes to perform transformation
     # Transformations: 
@@ -374,4 +500,4 @@ if __name__ == '__main__':
     save_split = args.save_split
 
     processor = DataPreProcessor(data_path)
-    processor.process_data(**args)
+    processor.pre_process_data(**args)
