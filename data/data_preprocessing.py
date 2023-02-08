@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.preprocessing import OneHotEncoder, StandardScaler, Normalizer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler, Normalizer, MinMaxScaler
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer
 from sklearn.pipeline import Pipeline
@@ -14,7 +14,7 @@ class Normalize_Data(BaseEstimator, TransformerMixin):
         # Read in data
         self.all_features = all_features
         self.normalise_cols = normalise_cols
-        self.normaliser = Normalizer() if not normaliser else normaliser
+        self.normaliser = StandardScaler() if not normaliser else normaliser
 
     def fit(self, X, y=None):
         
@@ -42,7 +42,7 @@ class Normalize_Data(BaseEstimator, TransformerMixin):
         
         # Transform only the columns in the fill_in list
         X_normaliser = self.normaliser.transform(X[self.normalise_cols].values)
-        df_normaliser = pd.DataFrame(X_normaliser, columns=X[self.normalise_cols].columns)
+        df_normaliser = pd.DataFrame(X_normaliser, columns=self.normalise_cols)
         X.loc[:,self.normalise_cols] = df_normaliser
 
         # Return the dataframe with the new fill_in values and the other columns in the features list
@@ -65,23 +65,25 @@ class Select_Column(BaseEstimator, TransformerMixin):
             raise exp
         return X[self.select_column]
     
-class Shift_Target(BaseEstimator, TransformerMixin):    
+class Shift_Target_By(BaseEstimator, TransformerMixin):    
     def __init__(self, all_features,
                         target,
                         target_shift_name="target_shift",
+                        shift_by=-1
                         ):
     
         #Read in data
         self.all_features = all_features
         self.target = target
         self.target_shift_name = target_shift_name
+        self.shift_by = shift_by
 
     def fit(self, X, y=None):
         
         return self #do nothing
     
     def transform(self, X):
-        X[self.target_shift_name] = X[self.target].shift(-1)
+        X[self.target_shift_name] = X[self.target].shift(-self.shift_by)
         return X
     
 class Label_Shift_Target(BaseEstimator, TransformerMixin):
@@ -185,7 +187,38 @@ class Replace_Char(BaseEstimator, TransformerMixin):
             X.loc[:, self.find_in] = X[self.find_in].applymap(lambda x: str(x).replace(find_value, self.with_))
         return X
     
-      
+class Replace_Inf(BaseEstimator, TransformerMixin):
+    """
+    This is a Class Used to Preprocess the data, By
+    Replacing Infinity Values with Max Value in that Column
+    """
+    def __init__(self, all_features=[],
+                        replace_in=[]
+                        ):
+
+        #Read in data
+        self.all_features = all_features
+        self.replace_in = replace_in
+
+    def fit(self, X, y=None):
+        
+        return self #do nothing
+
+    def transform(self,X):
+        """
+            Replace infinity values with max value in that column
+        """
+        try:
+            X[self.all_features]
+            X = X.copy()
+        except Exception as exp:
+            raise exp
+        
+        for col in self.replace_in:
+            X[col].replace([np.inf], X[col].max(), inplace=True)
+            X[col].replace([-np.inf], X[col].min(), inplace=True)
+        return X
+
 class DropNanRows(BaseEstimator, TransformerMixin):
     """
         This is a Class Used to Preprocess the data by
@@ -462,41 +495,58 @@ class DataPreProcessor(BaseDataProcessor):
                         ('Mice_Imputer', Fill_Empty_Spaces_With_Values(all_features=self.get_all_features(), fill_in=self.get_all_features())),
                         ('Select_Column', Select_Column(all_features=self.get_all_features(), select_column=self.get_all_features())),
                         ('DropNanRows', DropNanRows(all_features=self.get_all_features())),
+                        ("Replace_Inf", Replace_Inf(all_features=self.get_all_features(),replace_in=self.get_all_features()))
                         ]) if pipeline_config_feature is None else pipeline_config_feature
         
-        target_shift_name = "target_shift"
-        target_shift_direction_name = "target_shift_direction"
-        target_shift_direction_one_hot_list_names = [target_shift_direction_name+"_-1", target_shift_direction_name+"_1"]
+        target_shift_names = ["target_shift_t+1", "target_shift_t+2", "target_shift_t+3"]
+        target_shift_direction_names = ["target_shift_direction_t+1", "target_shift_direction_t+2", "target_shift_direction_t+3"]
+        target_shift_direction_one_hot_list_names = []
+        for target_shift_direction_name in target_shift_direction_names: target_shift_direction_one_hot_list_names.extend([target_shift_direction_name + "_-1", target_shift_direction_name + "_1"])
+
+        # target_shift_direction_one_hot_list_names = [(target_shift_direction_name+"_-1", target_shift_direction_name+"_1") for target_shift_direction_name in target_shift_direction_names]
         
         #Initialize Pipeline for target
         self.pipeline_config_target = Pipeline([
                         ('replace_all_coman_with_empt_space', Replace_Char(all_features=self.get_all_features(),find_in=[self.get_target_feature()],with_='')),
-                        ('shift_target', Shift_Target(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_name)),
-                        ('fill_missing_target', Fill_Empty_Spaces_With_NaN(all_features=self.get_all_features()+[target_shift_name],find_in=[target_shift_name],with_=np.nan)),
-                        ('Mice_Imputer_target', Fill_Empty_Spaces_With_Values(all_features=self.get_all_features()+[target_shift_name], fill_in=[target_shift_name])),
-                        ('label_shift_target', Label_Shift_Target(
-                            all_features=self.get_all_features()+[target_shift_name],
+                        ('shift_target_T1', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_names[0], shift_by=1)),
+                        ('shift_target_T2', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_names[1], shift_by=2)),
+                        ('shift_target_T3', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_names[2], shift_by=3)),
+                        ('fill_missing_target', Fill_Empty_Spaces_With_NaN(all_features=self.get_all_features()+target_shift_names,find_in=target_shift_names,with_=np.nan)),
+                        ('Mice_Imputer_target', Fill_Empty_Spaces_With_Values(all_features=self.get_all_features()+target_shift_names, fill_in=target_shift_names)),
+                        ('label_shift_target_t1', Label_Shift_Target(
+                            all_features=self.get_all_features()+target_shift_names,
                             target=self.get_target_feature(),
-                            target_shift_name=target_shift_name,
-                            target_shift_direction_name=target_shift_direction_name)),
-                        ('One_Hot_Encode_Shift_Target_Label', OneHotEncode_Columns(all_feat=self.get_all_features()+[target_shift_name], feat_to_dummy=[target_shift_direction_name])),
-                        ('Select_Column', Select_Column(all_features=self.get_all_features()+[target_shift_name]+target_shift_direction_one_hot_list_names, select_column=[target_shift_name,target_shift_direction_name]+target_shift_direction_one_hot_list_names))
+                            target_shift_name=target_shift_names[0],
+                            target_shift_direction_name=target_shift_direction_names[0])),
+                        ('label_shift_target_t2', Label_Shift_Target(
+                            all_features=self.get_all_features()+target_shift_names,
+                            target=self.get_target_feature(),
+                            target_shift_name=target_shift_names[1],
+                            target_shift_direction_name=target_shift_direction_names[1])),
+                        ('label_shift_target_t3', Label_Shift_Target(
+                            all_features=self.get_all_features()+target_shift_names,
+                            target=self.get_target_feature(),
+                            target_shift_name=target_shift_names[2],
+                            target_shift_direction_name=target_shift_direction_names[2])),
+                        ('One_Hot_Encode_Shift_Target_Label', OneHotEncode_Columns(all_feat=self.get_all_features()+target_shift_names, feat_to_dummy=target_shift_direction_names)),
+                        ('Select_Column', Select_Column(all_features=self.get_all_features()+target_shift_names+target_shift_direction_one_hot_list_names, select_column=target_shift_names+target_shift_direction_names+target_shift_direction_one_hot_list_names))
                         ]) 
-        self.target_shift_name = target_shift_name
-        self.target_shift_direction_name = target_shift_direction_name
+        self.target_shift_names = target_shift_direction_names
+        self.target_shift_direction_names = target_shift_direction_names
         
         #Initialize feature Normalizer
         self.pipeline_config_normaliser = Pipeline([
                         ('Select_Column', Select_Column(all_features=self.get_all_features(), select_column=self.get_all_features())),
-                        ('Normalize', Normalize_Data(all_features=self.get_all_features(), normalise_cols=self.get_all_features()))
+                        ('Normalize', Normalize_Data(all_features=self.get_all_features(), normalise_cols=self.get_all_features())),
+                        ("Replace_Inf", Replace_Inf(all_features=self.get_all_features(),replace_in=self.get_all_features()))
                         ]) if pipeline_config_normaliser is None else pipeline_config_normaliser
         
         
     def get_target_shift_direction(self):
-        return self.target_shift_direction_name
+        return self.target_shift_direction_names
     
     def get_target_shift_name(self):
-        return self.target_shift_name
+        return self.target_shift_names
     
     def split_data(self, **kwargs):
         """
@@ -515,8 +565,8 @@ class DataPreProcessor(BaseDataProcessor):
             Returns:
             None
         """
-        test_size = kwargs.get("test_size", 0.2)
-        val_size = kwargs.get("val_size", 0.2)
+        test_size = kwargs.get("test_size", 0)
+        val_size = kwargs.get("val_size", 0)
         random_state = kwargs.get("random_state", 0)
         split_data = kwargs.get("split_data", True)
         save_splits = kwargs.get("save_split_data", True)

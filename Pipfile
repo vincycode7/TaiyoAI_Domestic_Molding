@@ -7,6 +7,10 @@ name = "pypi"
 pandas = "*"
 scikit-learn = "*"
 pyyaml = "*"
+lazypredict = "*"
+plotly = "*"
+nbformat = "*"
+torch = "*"
 
 [dev-packages]
 ipykernel = "*"
