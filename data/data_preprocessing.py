@@ -186,6 +186,31 @@ class Replace_Char(BaseEstimator, TransformerMixin):
         return X
     
       
+class DropNanRows(BaseEstimator, TransformerMixin):
+    """
+        This is a Class Used to Preprocess the data by
+        dropping rows with NaN values.
+    """
+    def __init__(self, all_features=[]):
+        self.all_features = all_features
+    
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        """
+            Drop rows with NaN values.
+        """
+        try:
+            X[self.all_features]
+            X = X.copy()
+        except Exception as exp:
+            raise exp
+        
+        X.dropna(inplace=True)
+        return X
+
+
 class Fill_Empty_Spaces_With_NaN(BaseEstimator, TransformerMixin):
     """
         This is a Class Used to Preprocess the data, By
@@ -404,7 +429,7 @@ class BaseDataProcessor:
             Returns:
             None
         """
-        data = data.drop(columns=self.exclude_feature_from_export)
+        # data = data.drop(columns=self.exclude_feature_from_export)
         data.to_csv(data_file_path, index=False)
         
 class DataPreProcessor(BaseDataProcessor):
@@ -430,12 +455,13 @@ class DataPreProcessor(BaseDataProcessor):
 
         #Initialize Pipeline for features
         self.pipeline_config_feature = Pipeline([
-                        ('replace_all_coman_with_empt_space', Replace_Char(all_features=self.get_all_columns(),find_in=self.get_all_features(),with_='')),
-                        ('fill_missing_with_NaN', Fill_Empty_Spaces_With_NaN(all_features=self.get_all_columns(),find_in=self.get_all_features(),with_='NaN')),
-                        ('int_column_to_float', Back_To_Float(all_features=self.get_all_columns(), to_encode=self.get_all_features())),
-                        ('fill_missing_for_nan', Fill_Empty_Spaces_With_NaN(all_features=self.get_all_columns(),find_in=self.get_all_features(),with_=np.nan)),
-                        ('Mice_Imputer', Fill_Empty_Spaces_With_Values(all_features=self.get_all_columns(), fill_in=self.get_all_features())),
-                        ('Select_Column', Select_Column(all_features=self.get_all_columns(), select_column=self.get_all_features())),
+                        ('replace_all_coman_with_empt_space', Replace_Char(all_features=self.get_all_features(),find_in=self.get_all_features(),with_='')),
+                        ('fill_missing_with_NaN', Fill_Empty_Spaces_With_NaN(all_features=self.get_all_features(),find_in=self.get_all_features(),with_='NaN')),
+                        ('int_column_to_float', Back_To_Float(all_features=self.get_all_features(), to_encode=self.get_all_features())),
+                        ('fill_missing_for_nan', Fill_Empty_Spaces_With_NaN(all_features=self.get_all_features(),find_in=self.get_all_features(),with_=np.nan)),
+                        ('Mice_Imputer', Fill_Empty_Spaces_With_Values(all_features=self.get_all_features(), fill_in=self.get_all_features())),
+                        ('Select_Column', Select_Column(all_features=self.get_all_features(), select_column=self.get_all_features())),
+                        ('DropNanRows', DropNanRows(all_features=self.get_all_features())),
                         ]) if pipeline_config_feature is None else pipeline_config_feature
         
         target_shift_name = "target_shift"
@@ -503,10 +529,10 @@ class DataPreProcessor(BaseDataProcessor):
 
         if split_data and test_size and float(test_size) > 0:
             test_size = float(test_size)+float(val_size) if float(val_size) else test_size
-            self.train_data, self.val_test_data = train_test_split(self.data, test_size=test_size, random_state=random_state)
+            self.train_data, self.val_test_data = train_test_split(self.data, test_size=test_size,shuffle=False)
 
             if val_size and float(val_size) > 0:
-                self.val_data, self.test_data = train_test_split(self.val_test_data, test_size=1/(test_size/float(val_size)), random_state=random_state)
+                self.val_data, self.test_data = train_test_split(self.val_test_data, test_size=1/(test_size/float(val_size)),shuffle=False)
                 if test_save_path is not None and save_splits:
                     self.save_data(self.test_data, test_save_path)
                 if val_save_path is not None and save_splits:
@@ -519,7 +545,6 @@ class DataPreProcessor(BaseDataProcessor):
         else:
             if save_splits and train_save_path is not None:
                 self.save_data(self.data, train_save_path)
-                self.data = self.train_data
 
 
     def fit_pipeline(self, **kwargs):
@@ -649,7 +674,7 @@ class DataPreProcessor(BaseDataProcessor):
             self.load_pipeline(load_path=data_pipelined_path)
             
         if fit_data_pipeline:
-            self.fit_pipeline(data=data, **kwargs)
+            self.fit_pipeline(data=self.data, **kwargs)
                 
 class DataPostProcessor(DataPreProcessor):
     
