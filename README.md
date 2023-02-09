@@ -12,6 +12,55 @@ You can find all the dependencies in the following `requirements.txt` file.
 
 ## Installation
 
+Step 1: Install dependencies - First install pip
+
+    Here are the steps to install Jupyter:
+
+    Make sure you have Python installed on your system. If not, you can download and install it from the official Python website (https://www.python.org/downloads/).
+
+    Install pip, which is a package manager for Python. You can follow the instructions on the official pip documentation (https://pip.pypa.io/en/stable/installation/) to install pip.
+
+Step 2: Clone and Install other packages
+
+    To install the TaiyoAI_Domestic_Molding project, please follow the below steps:
+
+        Clone the repository:
+            Open a terminal window and navigate to the desired directory for the repository.
+            Use the following command to clone the repository:
+            bash
+            
+            `git clone https://github.com/TaiyoAI_Domestic_Molding.git`
+
+        Create a virtual environment:
+            Navigate to the cloned repository directory.
+            Create a virtual environment using the following command:
+        
+            `python -m venv env`
+
+        Activate the virtual environment using the following command:
+
+            `source env/bin/activate`
+
+        Install dependencies:
+        
+            Navigate to the cloned repository directory.
+            Install the dependencies using the following command:
+        
+            `pip install -r requirements.txt`
+            
+        Verify the installation:
+            Navigate to the cloned repository directory.
+            Start a Jupyter Notebook using the following command:
+
+            `jupyter notebook`
+
+            This should open the Jupyter web interface in your default web browser. From there, you can navigate to the exploratory_data_analysis.ipynb file and run the code.
+            Note: If you encounter any issues during installation, you can refer to the Jupyter documentation (https://jupyter.org/install) for more information and troubleshooting tips.
+            
+            In the Jupyter Notebook, navigate to the exploratory_data_analysis.ipynb file and run the first cell to ensure everything has been installed and configured correctly.
+            With these steps, you should have successfully installed the TaiyoAI_Domestic_Molding project and be ready to use it for your machine learning stock prediction project.
+
+
 ### Class BaseDataProcessor
 
 This class is the base class that includes functions to load, clean and check the data.

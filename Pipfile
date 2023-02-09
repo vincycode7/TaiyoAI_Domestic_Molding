@@ -11,6 +11,7 @@ lazypredict = "*"
 plotly = "*"
 nbformat = "*"
 torch = "*"
+jupyter = "*"
 
 [dev-packages]
 ipykernel = "*"
