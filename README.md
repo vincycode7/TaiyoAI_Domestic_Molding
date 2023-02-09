@@ -10,6 +10,7 @@ This repository contains code to preprocess data for building Domestic Molding P
 ### Dependencies
 You can find all the dependencies in the following `requirements.txt` file.
 
+Note: You can find the full project presentation here: https://docs.google.com/presentation/d/1MJPctwc3m58CySRstCFRaSQsyQbspXdiFS1gs_CoN4Y/edit#slide=id.g1a360e61908_2_36
 ## Installation
 
 Step 1: Install dependencies - First install pip
