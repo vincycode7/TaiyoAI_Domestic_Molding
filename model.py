@@ -234,3 +234,74 @@ class LSTMBackBone(nn.Module):
 #             "roc_auc": roc_auc,
 #             "balanced_accuracy": balanced_accuracy
 #         }
+
+    # from utils.util_functions import split_data_util, process_data_util
+    # from configs.configs import get_data_processor_config
+    # data_processor_config = get_data_processor_config()
+    # from configs.configs import get_data_postprocessor_config
+    # from data.data_preprocessing import DataPostProcessor
+    # from model import LSTMBackBone
+    # data_postprocessor_config = get_data_postprocessor_config()
+    
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument("--split_percentage", type=float, default=data_processor_config.get("split_percentage", 0.2), help="Percentage of data to use for test split")
+    # parser.add_argument("--split_data", type=bool, default=data_processor_config.get("split_data",True), help="Boolean flag to specify if the data should be split or not")
+    # parser.add_argument("--process_data", type=bool, default=data_processor_config.get("process_data",True), help="Boolean flag to specify if the data should be processed or not")
+    # parser.add_argument("--save_datapipelined", type=bool, default=data_processor_config.get("save_datapipelined",True), help="Boolean flag to specify if the datapipeline should be saved or not")
+    # parser.add_argument("--transform_data", type=bool, default=data_processor_config.get("transform_data",True), help="Boolean flag to specify if the data should be transformed or not")
+    # parser.add_argument("--save_transformed", type=bool, default=data_processor_config.get("save_transformed",True), help="Boolean flag to specify if the transformed data should be saved or not")
+    # parser.add_argument("--datapipelined_path", type=str, default=data_processor_config.get("datapipelined_path",None), help="Path to save the datapipeline")
+    # parser.add_argument("--save_transformed_path", type=str, default=data_processor_config.get("save_transformed_path",None), help="Path to save the transformed data")
+    # parser.add_argument("--data_file_path", type=str, default=data_processor_config.get("data_file_path",'artifacts/data/raw/data.csv'), help="Path to the data file")
+    # parser.add_argument("--left_split_save_path", type=str, default=data_processor_config.get("left_split_save_path","train_split.csv"), help="Path to save the left split of data")
+    # parser.add_argument("--right_split_save_path", type=str, default=data_processor_config.get("right_split_save_path","test_split.csv"), help="Path to save the right split of data")
+    # parser.add_argument("--save_split", type=bool, default=data_processor_config.get("save_split",False), help="Boolean flag to specify if the split files should be saved or not")
+
+    # args = parser.parse_args()
+
+    # split_percentage = args.split_percentage
+    # split_data = args.split_data
+    # process_data = args.process_data
+    # save_datapipelined = args.save_datapipelined
+    # transform_data = args.transform_data
+    # save_transformed = args.save_transformed
+    # datapipelined_path = args.datapipelined_path
+    # save_transformed_path = args.save_transformed_path
+    # data_file_path = args.data_file_path
+    # left_split_save_path = args.left_split_save_path
+    # right_split_save_path = args.right_split_save_path
+    # save_split = args.save_split
+
+    # ### Train Data Pipeline
+    # data_postprocessor_config["split_data"] = False
+    # data_postprocessor_config["save_split_data"] = False
+    # data_postprocessor_config["data_pipelined_path"] = "artifacts/data_pipeline/data_pipeline_with_all_feat.pkl"
+    # data_postprocessor_config["data_file_path"] = "artifacts/data/processed/train_split.csv"
+    # processor_train = DataPostProcessor(**data_postprocessor_config)
+    # processor_train.post_process_data(**data_postprocessor_config)
+
+    # # Test Data Pipeline
+    # data_postprocessor_config["split_data"] = False
+    # data_postprocessor_config["save_split_data"] = False
+    # data_postprocessor_config["data_pipelined_path"] = "artifacts/data_pipeline/data_pipeline_with_all_feat.pkl"
+    # data_postprocessor_config["data_file_path"] = "artifacts/data/processed/test_split.csv"
+    # processor_test = DataPostProcessor(**data_postprocessor_config)
+    # processor_test.post_process_data(**data_postprocessor_config)
+    
+    # ### Train Data Pipeline
+    # data_postprocessor_config["all_columns"] = all_columns_for_filtered_corr
+    # data_postprocessor_config["split_data"] = False
+    # data_postprocessor_config["save_split_data"] = False
+    # data_postprocessor_config["data_pipelined_path"] = "artifacts/data_pipeline/data_pipeline_with_filtered_corr_feat.pkl"
+    # data_postprocessor_config["data_file_path"] = "artifacts/data/processed/train_split.csv"
+    # processor_train_with_filtered_corr_feat = DataPostProcessor(**data_postprocessor_config)
+    # processor_train_with_filtered_corr_feat.post_process_data(**data_postprocessor_config)
+
+    # # Test Data Pipeline
+    # data_postprocessor_config["all_columns"] = all_columns_for_filtered_corr
+    # data_postprocessor_config["split_data"] = False
+    # data_postprocessor_config["save_split_data"] = False
+    # data_postprocessor_config["data_pipelined_path"] = "artifacts/data_pipeline/data_pipeline_with_filtered_corr_feat.pkl"
+    # data_postprocessor_config["data_file_path"] = "artifacts/data/processed/test_split.csv"
+    # processor_test_with_filtered_corr_feat = DataPostProcessor(**data_postprocessor_config)
+    # processor_test_with_filtered_corr_feat.post_process_data(**data_postprocessor_config)
