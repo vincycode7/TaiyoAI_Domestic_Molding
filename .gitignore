@@ -1,1 +1,3 @@
 *.pkl
+artifacts/data/processed/test_split.csv
+artifacts/data/processed/train_split.csv
