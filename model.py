@@ -1,7 +1,7 @@
 from typing import Any
 import numpy as np
 import sklearn.metrics as metrics
-from sklearn.metrics import mean_squared_error, f1_score, roc_auc_score, accuracy_score, balanced_accuracy_score,r2_score,mean_absolute_error,roc_auc_score,balanced_accuracy_score
+from sklearn.metrics import mean_squared_error, f1_score, roc_auc_score, accuracy_score, balanced_accuracy_score,r2_score,mean_absolute_error,roc_auc_score,balanced_accuracy_score,mean_absolute_percentage_error
 import torch.nn as nn
 from lazypredict.Supervised import LazyRegressor, LazyClassifier
 import torch
@@ -91,6 +91,7 @@ class LSTMBackBone(nn.Module):
             direction = np.where(torch.sigmoid(y_val_pred[:,1:]) >= 0.5, 1, 0)
             loss = criterion(y_val_pred, torch.Tensor(Y_val.values))
             rmse = np.sqrt(mean_squared_error(Y_val.values[:,:1], y_val_pred.detach().numpy()[:,:1]))
+            mape = mean_absolute_percentage_error(Y_val.values[:,:1], y_val_pred.detach().numpy()[:,:1])
             r_squared = r2_score(Y_val.values[:,:1], y_val_pred.detach().numpy()[:,:1])
             adjusted_r_squared = 1 - (1-r_squared)*(len(Y_val.values[:,:1])-1)/(len(Y_val.values[:,:1])-X_val.values.shape[1]-1)
             mae = mean_absolute_error(Y_val.values[:,:1], y_val_pred.detach().numpy()[:,:1])
@@ -103,6 +104,7 @@ class LSTMBackBone(nn.Module):
         self.eval_results = {
             "loss":loss,
             "rmse": rmse,
+            "mape":mape,
             "r_squared": r_squared,
             "adjusted_r_squared": adjusted_r_squared,
             "directional_accuracy": directional_accuracy,
