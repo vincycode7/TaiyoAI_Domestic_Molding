@@ -92,7 +92,7 @@ class LSTMBackBone(nn.Module):
             loss = criterion(y_val_pred, torch.Tensor(Y_val.values))
             rmse = np.sqrt(mean_squared_error(Y_val.values[:,:1], y_val_pred.detach().numpy()[:,:1]))
             r_squared = r2_score(Y_val.values[:,:1], y_val_pred.detach().numpy()[:,:1])
-        #     # adjusted_r_squared = 1 - (1-r_squared)*(len(Y_val[:,:1])-1)/(len(Y_val[:,:1])-X_val.shape[1]-1)
+            adjusted_r_squared = 1 - (1-r_squared)*(len(Y_val.values[:,:1])-1)/(len(Y_val.values[:,:1])-X_val.values.shape[1]-1)
             mae = mean_absolute_error(Y_val.values[:,:1], y_val_pred.detach().numpy()[:,:1])
             
             directional_accuracy = accuracy_score(Y_val.values[:,1:],direction)
@@ -104,7 +104,7 @@ class LSTMBackBone(nn.Module):
             "loss":loss,
             "rmse": rmse,
             "r_squared": r_squared,
-            # "adjusted_r_squared": adjusted_r_squared,
+            "adjusted_r_squared": adjusted_r_squared,
             "directional_accuracy": directional_accuracy,
             "f1_score": f1,
             "roc_auc": roc_auc,
@@ -137,7 +137,7 @@ class LSTMBackBone(nn.Module):
             # Evaluation on the validation set
             with torch.no_grad():
                 evaluation = self.evaluate_func(X_val, Y_val)
-                pbar.set_description(f"Epoch: {epoch + 1}/{num_epochs} Train loss: {running_loss / len(train_dataloader)} Loss: {evaluation['loss']:.4f} RMSE: {evaluation['rmse']:.4f} R^2: {evaluation['r_squared']:.4f} MAE: {evaluation['mae']:.4f} Directional Accuracy: {evaluation['directional_accuracy']:.4f} F1 Score: {evaluation['f1_score']:.4f} ROC AUC: {evaluation['roc_auc']:.4f} Balanced Accuracy: {evaluation['balanced_accuracy']:.4f}")
+                pbar.set_description(f"Epoch: {epoch + 1}/{num_epochs} Train loss: {running_loss / len(train_dataloader)} Loss: {evaluation['loss']:.4f} RMSE: {evaluation['rmse']:.4f} Adjusted R Squared: {evaluation['r_squared']:.4f} R^2: {evaluation['r_squared']:.4f} MAE: {evaluation['mae']:.4f} Directional Accuracy: {evaluation['directional_accuracy']:.4f} F1 Score: {evaluation['f1_score']:.4f} ROC AUC: {evaluation['roc_auc']:.4f} Balanced Accuracy: {evaluation['balanced_accuracy']:.4f}")
                 
         pbar.close()
         print("Training complete!")

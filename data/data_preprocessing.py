@@ -498,8 +498,8 @@ class DataPreProcessor(BaseDataProcessor):
                         ("Replace_Inf", Replace_Inf(all_features=self.get_all_features(),replace_in=self.get_all_features()))
                         ]) if pipeline_config_feature is None else pipeline_config_feature
         
-        target_shift_names = ["target_shift_t+1", "target_shift_t+2", "target_shift_t+3"]
-        target_shift_direction_names = ["target_shift_direction_t+1", "target_shift_direction_t+2", "target_shift_direction_t+3"]
+        target_shift_names = ["target_shift_t+1", "target_shift_t+2", "target_shift_t+3", "target_shift_t+4", "target_shift_t+5", "target_shift_t+6"]
+        target_shift_direction_names = ["target_shift_direction_t+1", "target_shift_direction_t+2", "target_shift_direction_t+3", "target_shift_direction_t+4", "target_shift_direction_t+5", "target_shift_direction_t+6"]
         target_shift_direction_one_hot_list_names = []
         for target_shift_direction_name in target_shift_direction_names: target_shift_direction_one_hot_list_names.extend([target_shift_direction_name + "_-1", target_shift_direction_name + "_1"])
 
@@ -511,6 +511,9 @@ class DataPreProcessor(BaseDataProcessor):
                         ('shift_target_T1', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_names[0], shift_by=1)),
                         ('shift_target_T2', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_names[1], shift_by=2)),
                         ('shift_target_T3', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_names[2], shift_by=3)),
+                        ('shift_target_T4', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_names[3], shift_by=4)),
+                        ('shift_target_T5', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_names[4], shift_by=5)),
+                        ('shift_target_T6', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_names[5], shift_by=6)),
                         ('fill_missing_target', Fill_Empty_Spaces_With_NaN(all_features=self.get_all_features()+target_shift_names,find_in=target_shift_names,with_=np.nan)),
                         ('Mice_Imputer_target', Fill_Empty_Spaces_With_Values(all_features=self.get_all_features()+target_shift_names, fill_in=target_shift_names)),
                         ('label_shift_target_t1', Label_Shift_Target(
@@ -528,6 +531,21 @@ class DataPreProcessor(BaseDataProcessor):
                             target=self.get_target_feature(),
                             target_shift_name=target_shift_names[2],
                             target_shift_direction_name=target_shift_direction_names[2])),
+                        ('label_shift_target_t4', Label_Shift_Target(
+                            all_features=self.get_all_features()+target_shift_names,
+                            target=self.get_target_feature(),
+                            target_shift_name=target_shift_names[3],
+                            target_shift_direction_name=target_shift_direction_names[3])),
+                        ('label_shift_target_t5', Label_Shift_Target(
+                            all_features=self.get_all_features()+target_shift_names,
+                            target=self.get_target_feature(),
+                            target_shift_name=target_shift_names[4],
+                            target_shift_direction_name=target_shift_direction_names[4])),
+                        ('label_shift_target_t6', Label_Shift_Target(
+                            all_features=self.get_all_features()+target_shift_names,
+                            target=self.get_target_feature(),
+                            target_shift_name=target_shift_names[5],
+                            target_shift_direction_name=target_shift_direction_names[5])),
                         ('One_Hot_Encode_Shift_Target_Label', OneHotEncode_Columns(all_feat=self.get_all_features()+target_shift_names, feat_to_dummy=target_shift_direction_names)),
                         ('Select_Column', Select_Column(all_features=self.get_all_features()+target_shift_names+target_shift_direction_one_hot_list_names, select_column=target_shift_names+target_shift_direction_names+target_shift_direction_one_hot_list_names))
                         ]) 
