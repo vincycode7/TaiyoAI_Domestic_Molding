@@ -65,6 +65,50 @@ class Select_Column(BaseEstimator, TransformerMixin):
             raise exp
         return X[self.select_column]
     
+class Growth(BaseEstimator, TransformerMixin):
+    def __init__(self, all_features,target, new_col_name="target_shift"):
+        self.all_features = all_features
+        self.new_col_name = new_col_name
+        self.target = target
+
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        X[self.target] = X[self.target].astype(float)
+        X[self.new_col_name] = (X[self.target] - X[self.target].shift(1)) / X[self.target].shift(1)
+        return X
+    
+class MovingAverage(BaseEstimator, TransformerMixin):    
+    def __init__(self, all_features, target, window_size,
+                        new_col_name="target_shift"):
+        self.all_features = all_features
+        self.target = target
+        self.window_size = window_size
+        self.new_col_name = new_col_name
+
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        X[self.target] = X[self.target].astype(float)
+        X[self.new_col_name] = X[self.target].rolling(self.window_size).mean()
+        return X
+    
+class Change(BaseEstimator, TransformerMixin):
+    def __init__(self, all_features, target, new_col_name="target_shift"):
+        self.all_features = all_features
+        self.target = target
+        self.new_col_name = new_col_name
+
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        X[self.target] = X[self.target].astype(float)
+        X[self.new_col_name] = X[self.target].diff()
+        return X
+    
 class Shift_Target_By(BaseEstimator, TransformerMixin):    
     def __init__(self, all_features,
                         target,
@@ -486,6 +530,11 @@ class DataPreProcessor(BaseDataProcessor):
         assert isinstance(pipeline_config_target, Pipeline) or pipeline_config_target is None, "pipeline_config_target should be a Pipeline object or None"
         assert isinstance(pipeline_config_normaliser, Pipeline) or pipeline_config_normaliser is None, "pipeline_config_normaliser should be a Pipeline object or None"
 
+        target_shift_names = ["target_shift_t+1", "target_shift_t+2", "target_shift_t+3", "target_shift_t+4", "target_shift_t+5", "target_shift_t+6", "target_shift_t+7", "target_shift_t+8", "target_shift_t+9", "target_shift_t+10", "target_shift_t+11", "target_shift_t+12", "target_shift_t+13", "target_shift_t+14"]
+        target_lag_names = ["target_lag_t-1", "target_lag_t-2", "target_lag_t-3", "target_lag_t-4", "target_lag_t-5", "target_lag_t-6"]
+        target_shift_direction_names = ["target_shift_direction_t+1", "target_shift_direction_t+2", "target_shift_direction_t+3", "target_shift_direction_t+4", "target_shift_direction_t+5", "target_shift_direction_t+6"]
+        target_shift_direction_one_hot_list_names = []
+        all_arg_feats = ["target_change", "target_growth", "target_ma_2", "target_ma_3", "target_ma_5", "target_ma_7", "target_ma_10", "target_lag_t-1", "target_lag_t-2", "target_lag_t-3", "target_lag_t-4", "target_lag_t-5", "target_lag_t-6"]
         #Initialize Pipeline for features
         self.pipeline_config_feature = Pipeline([
                         ('replace_all_coman_with_empt_space', Replace_Char(all_features=self.get_all_features(),find_in=self.get_all_features(),with_='')),
@@ -493,14 +542,29 @@ class DataPreProcessor(BaseDataProcessor):
                         ('int_column_to_float', Back_To_Float(all_features=self.get_all_features(), to_encode=self.get_all_features())),
                         ('fill_missing_for_nan', Fill_Empty_Spaces_With_NaN(all_features=self.get_all_features(),find_in=self.get_all_features(),with_=np.nan)),
                         ('Mice_Imputer', Fill_Empty_Spaces_With_Values(all_features=self.get_all_features(), fill_in=self.get_all_features())),
-                        ('Select_Column', Select_Column(all_features=self.get_all_features(), select_column=self.get_all_features())),
-                        ('DropNanRows', DropNanRows(all_features=self.get_all_features())),
-                        ("Replace_Inf", Replace_Inf(all_features=self.get_all_features(),replace_in=self.get_all_features()))
+                        
+                        ('change', Change(all_features=self.get_all_features(),target=self.get_target_feature(),new_col_name="target_change",)),
+                        ('growth', Growth(all_features=self.get_all_features(),target=self.get_target_feature(),new_col_name="target_growth",)),
+                        
+                        ('target_ma_2', MovingAverage(all_features=self.get_all_features(),target=self.get_target_feature(),new_col_name="target_ma_2", window_size=2)),
+                        ('target_ma_3', MovingAverage(all_features=self.get_all_features(),target=self.get_target_feature(),new_col_name="target_ma_3", window_size=3)),
+                        ('target_ma_5', MovingAverage(all_features=self.get_all_features(),target=self.get_target_feature(),new_col_name="target_ma_5", window_size=5)),
+                        ('target_ma_7', MovingAverage(all_features=self.get_all_features(),target=self.get_target_feature(),new_col_name="target_ma_7", window_size=7)),
+                        ('target_ma_10', MovingAverage(all_features=self.get_all_features(),target=self.get_target_feature(),new_col_name="target_ma_10", window_size=10)),
+
+                        ('lag_target_T1', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_lag_names[0], shift_by=-1)),
+                        ('lag_target_T2', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_lag_names[1], shift_by=-2)),
+                        ('lag_target_T3', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_lag_names[2], shift_by=-3)),
+                        ('lag_target_T4', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_lag_names[3], shift_by=-4)),
+                        ('lag_target_T5', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_lag_names[4], shift_by=-5)),
+                        ('lag_target_T6', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_lag_names[5], shift_by=-6)),
+                        ('Mice_Imputer_2', Fill_Empty_Spaces_With_Values(all_features=self.get_all_features()+all_arg_feats, fill_in=all_arg_feats)),
+
+                        # ('Select_Column', Select_Column(all_features=self.get_all_features(), select_column=self.get_all_features())),
+                        # ('DropNanRows', DropNanRows(all_features=self.get_all_features())),
+                        ("Replace_Inf", Replace_Inf(all_features=self.get_all_features()+all_arg_feats,replace_in=self.get_all_features()+all_arg_feats))
                         ]) if pipeline_config_feature is None else pipeline_config_feature
         
-        target_shift_names = ["target_shift_t+1", "target_shift_t+2", "target_shift_t+3", "target_shift_t+4", "target_shift_t+5", "target_shift_t+6"]
-        target_shift_direction_names = ["target_shift_direction_t+1", "target_shift_direction_t+2", "target_shift_direction_t+3", "target_shift_direction_t+4", "target_shift_direction_t+5", "target_shift_direction_t+6"]
-        target_shift_direction_one_hot_list_names = []
         for target_shift_direction_name in target_shift_direction_names: target_shift_direction_one_hot_list_names.extend([target_shift_direction_name + "_-1", target_shift_direction_name + "_1"])
 
         # target_shift_direction_one_hot_list_names = [(target_shift_direction_name+"_-1", target_shift_direction_name+"_1") for target_shift_direction_name in target_shift_direction_names]
@@ -508,12 +572,24 @@ class DataPreProcessor(BaseDataProcessor):
         #Initialize Pipeline for target
         self.pipeline_config_target = Pipeline([
                         ('replace_all_coman_with_empt_space', Replace_Char(all_features=self.get_all_features(),find_in=[self.get_target_feature()],with_='')),
+                        
                         ('shift_target_T1', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_names[0], shift_by=1)),
                         ('shift_target_T2', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_names[1], shift_by=2)),
                         ('shift_target_T3', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_names[2], shift_by=3)),
                         ('shift_target_T4', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_names[3], shift_by=4)),
                         ('shift_target_T5', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_names[4], shift_by=5)),
                         ('shift_target_T6', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_names[5], shift_by=6)),
+                        
+                        ('shift_target_T7', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_names[6], shift_by=7)),
+                        ('shift_target_T8', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_names[7], shift_by=8)),
+                        ('shift_target_T9', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_names[8], shift_by=9)),
+                        ('shift_target_T10', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_names[9], shift_by=10)),
+                        ('shift_target_T11', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_names[10], shift_by=11)),
+                        ('shift_target_T12', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_names[11], shift_by=12)),
+         
+                        ('shift_target_T13', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_names[12], shift_by=13)),
+                        ('shift_target_T14', Shift_Target_By(all_features=self.get_all_features(),target=self.get_target_feature(),target_shift_name=target_shift_names[13], shift_by=14)),
+                                       
                         ('fill_missing_target', Fill_Empty_Spaces_With_NaN(all_features=self.get_all_features()+target_shift_names,find_in=target_shift_names,with_=np.nan)),
                         ('Mice_Imputer_target', Fill_Empty_Spaces_With_Values(all_features=self.get_all_features()+target_shift_names, fill_in=target_shift_names)),
                         ('label_shift_target_t1', Label_Shift_Target(
@@ -547,16 +623,16 @@ class DataPreProcessor(BaseDataProcessor):
                             target_shift_name=target_shift_names[5],
                             target_shift_direction_name=target_shift_direction_names[5])),
                         ('One_Hot_Encode_Shift_Target_Label', OneHotEncode_Columns(all_feat=self.get_all_features()+target_shift_names, feat_to_dummy=target_shift_direction_names)),
-                        ('Select_Column', Select_Column(all_features=self.get_all_features()+target_shift_names+target_shift_direction_one_hot_list_names, select_column=target_shift_names+target_shift_direction_names+target_shift_direction_one_hot_list_names))
+                        # ('Select_Column', Select_Column(all_features=self.get_all_features()+target_shift_names+target_shift_direction_one_hot_list_names, select_column=target_shift_names+target_shift_direction_names+target_shift_direction_one_hot_list_names))
                         ]) 
         self.target_shift_names = target_shift_direction_names
         self.target_shift_direction_names = target_shift_direction_names
         
         #Initialize feature Normalizer
         self.pipeline_config_normaliser = Pipeline([
-                        ('Select_Column', Select_Column(all_features=self.get_all_features(), select_column=self.get_all_features())),
-                        ('Normalize', Normalize_Data(all_features=self.get_all_features(), normalise_cols=self.get_all_features())),
-                        ("Replace_Inf", Replace_Inf(all_features=self.get_all_features(),replace_in=self.get_all_features()))
+                        ('Select_Column', Select_Column(all_features=self.get_all_features()+all_arg_feats, select_column=self.get_all_features()+all_arg_feats)),
+                        ('Normalize', Normalize_Data(all_features=self.get_all_features()+all_arg_feats, normalise_cols=self.get_all_features()+all_arg_feats)),
+                        ("Replace_Inf", Replace_Inf(all_features=self.get_all_features()+all_arg_feats,replace_in=self.get_all_features()+all_arg_feats))
                         ]) if pipeline_config_normaliser is None else pipeline_config_normaliser
         
         

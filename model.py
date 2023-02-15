@@ -59,22 +59,23 @@ class LazyPredictClassificationBackBone(LazyPredictBackBone):
 # Define the LSTM model
 class LSTMBackBone(nn.Module):
     def __init__(self, input_dim, hidden_dim, layer_dim, output_dim):
-            super(LSTMBackBone, self).__init__()
-            self.hidden_dim = hidden_dim
-            self.layer_dim = layer_dim
-            self.lstm = nn.LSTM(input_dim, hidden_dim, layer_dim, batch_first=True)
-            # self.relu = nn.ReLU()
-            self.fc = nn.Linear(hidden_dim, output_dim)
+        super(LSTMBackBone, self).__init__()
+        self.hidden_dim = hidden_dim
+        self.layer_dim = layer_dim
+        self.lstm = nn.LSTM(input_dim, hidden_dim, layer_dim, batch_first=True)
+        self.relu = nn.ReLU()
+        self.fc = nn.Linear(hidden_dim, output_dim)
 
     def forward(self, x):
-        # h0 = torch.zeros(self.layer_dim, x.size(0), self.hidden_dim).to(x.device)
-        # c0 = torch.zeros(self.layer_dim, x.size(0), self.hidden_dim).to(x.device)
+        # print(x.shape)
+        if len(x.shape) == 2:
+            x = x.unsqueeze(1)  # Add a batch dimension if it doesn't exist
+        # print(x.shape)
         out, _ = self.lstm(x)
-        # print(out.shape)
-        # out = self.fc(self.relu(out))
-        out = self.fc(out)
-
+        # print(out.shape, out[:, -1, :].shape)
+        out = self.fc(self.relu(out[:, -1, :]))  # Use only the last output of the LSTM
         return out
+
 
     def get_evaluation(self, *args, **kwargs):
         return self.evaluate(*args, **kwargs)
@@ -83,35 +84,42 @@ class LSTMBackBone(nn.Module):
         return self.eval_results
     
     def evaluate_func(self, X_val, Y_val, criterion=None):
+        # print(f"X_val: {X_val.shape}")
         criterion = nn.MSELoss() if isinstance(criterion, type(None)) else criterion
         
         # Evaluation on the validation set
         with torch.no_grad():
-            y_val_pred = self(torch.Tensor(X_val.values))
-            direction = np.where(torch.sigmoid(y_val_pred[:,1:]) >= 0.5, 1, 0)
-            loss = criterion(y_val_pred, torch.Tensor(Y_val.values))
-            rmse = np.sqrt(mean_squared_error(Y_val.values[:,:1], y_val_pred.detach().numpy()[:,:1]))
-            mape = mean_absolute_percentage_error(Y_val.values[:,:1], y_val_pred.detach().numpy()[:,:1])
-            r_squared = r2_score(Y_val.values[:,:1], y_val_pred.detach().numpy()[:,:1])
-            adjusted_r_squared = 1 - (1-r_squared)*(len(Y_val.values[:,:1])-1)/(len(Y_val.values[:,:1])-X_val.values.shape[1]-1)
-            mae = mean_absolute_error(Y_val.values[:,:1], y_val_pred.detach().numpy()[:,:1])
-            
-            directional_accuracy = accuracy_score(Y_val.values[:,1:],direction)
-            f1 = f1_score(Y_val.values[:,1:],direction)
-            roc_auc = roc_auc_score(Y_val.values[:,1:],direction)
-            balanced_acc = balanced_accuracy_score(Y_val.values[:,1:],direction)  
-        
+            y_pred = self(torch.Tensor(X_val.values))
+            # direction = np.where(torch.sigmoid(y_val_pred[:,1:]) >= 0.5, 1, 0)
+            loss = criterion(y_pred, torch.Tensor(Y_val.values))
+            # rmse = np.sqrt(mean_squared_error(Y_val.values[:,:1], y_val_pred.detach().numpy()[:,:1]))
+            # mape = mean_absolute_percentage_error(Y_val.values[:,:1], y_val_pred.detach().numpy()[:,:1])
+            # r_squared = r2_score(Y_val.values[:,:1], y_val_pred.detach().numpy()[:,:1])
+            # adjusted_r_squared = 1 - (1-r_squared)*(len(Y_val.values[:,:1])-1)/(len(Y_val.values[:,:1])-X_val.values.shape[1]-1)
+            # mae = mean_absolute_error(Y_val.values[:,:1], y_val_pred.detach().numpy()[:,:1])
+                
+            n = len(Y_val.values[:,:1])
+            p = Y_val.values[:,:1].shape[1]
+            y = Y_val.values[:,:1]
+            # print(y,y_pred, n, p, y)
+            adj_r2 = 1 - (1 - r2_score(y, y_pred)) * ((n - 1) / (n - p - 1))
+            r2 = r2_score(y, y_pred)
+            rmse = np.sqrt(mean_squared_error(y, y_pred))
+            mape = mean_absolute_percentage_error(y, y_pred)
+            directional_accuracy = accuracy_score(y > X_val[["domestic_market_contract_blow_molding_low"]].values.reshape(-1,1), y_pred.detach().numpy() > X_val[["domestic_market_contract_blow_molding_low"]].values.reshape(-1,1))
+            # f1 = f1_score(processor_test.transformed_Y_data[target_timeline].values > processor_test.transformed_X_data[["domestic_market_contract_blow_molding_low"]].values, y_pred.reshape(-1, 1) > processor_test.transformed_X_data[["domestic_market_contract_blow_molding_low"]].values)
+
         self.eval_results = {
             "loss":loss,
             "rmse": rmse,
             "mape":mape,
-            "r_squared": r_squared,
-            "adjusted_r_squared": adjusted_r_squared,
+            "r_squared": r2,
+            "adjusted_r_squared": adj_r2,
             "directional_accuracy": directional_accuracy,
-            "f1_score": f1,
-            "roc_auc": roc_auc,
-            "balanced_accuracy": balanced_acc,
-            "mae":mae
+            # "f1_score": f1,
+            # "roc_auc": roc_auc,
+            # "balanced_accuracy": balanced_acc,
+            # "mae":mae
         }
         return self.eval_results
         
@@ -139,7 +147,7 @@ class LSTMBackBone(nn.Module):
             # Evaluation on the validation set
             with torch.no_grad():
                 evaluation = self.evaluate_func(X_val, Y_val)
-                pbar.set_description(f"Epoch: {epoch + 1}/{num_epochs} Train loss: {running_loss / len(train_dataloader)} Loss: {evaluation['loss']:.4f} RMSE: {evaluation['rmse']:.4f} Adjusted R Squared: {evaluation['r_squared']:.4f} R^2: {evaluation['r_squared']:.4f} MAE: {evaluation['mae']:.4f} Directional Accuracy: {evaluation['directional_accuracy']:.4f} F1 Score: {evaluation['f1_score']:.4f} ROC AUC: {evaluation['roc_auc']:.4f} Balanced Accuracy: {evaluation['balanced_accuracy']:.4f}")
+                pbar.set_description(f"Epoch: {epoch + 1}/{num_epochs} Train loss: {running_loss / len(train_dataloader)} Loss: {evaluation['loss']:.4f} RMSE: {evaluation['rmse']:.4f} Adjusted R Squared: {evaluation['r_squared']:.4f} R^2: {evaluation['r_squared']:.4f} Directional Accuracy: {evaluation['directional_accuracy']:.4f}")
                 
         pbar.close()
         print("Training complete!")
